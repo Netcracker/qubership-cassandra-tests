@@ -18,9 +18,9 @@ Get Image Tag
 Compare Images From Resources With Dd
     [Arguments]  ${dd_images}
     ${stripped_resources}=  Strip String  ${dd_images}  characters=,  mode=right
-    @{list_resources} =  Split String ${stripped_resources}  ,
+    @{list_resources} =  Split String  ${stripped_resources}  ,
     FOR  ${resource}  IN  @{list_resources}
-        ${type}  ${name}  ${container_name}  ${image}=  Split String ${resource}
+        ${type}  ${name}  ${container_name}  ${image}=  Split String  ${resource}
         ${resource_image}=  Get Resource Image  ${type}  ${name}  ${CASSANDRA_NAMESPACE}  ${container_name}
 
         ${expected_tag}=  Get Image Tag  ${image}
