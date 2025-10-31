@@ -107,7 +107,7 @@ Check Users Permissions
 Get Expected Permissions
     [Arguments]  ${cassandra_version}
     Log  Determining expected permissions for Cassandra version: "${cassandra_version}"
-    ${contains} =    Evaluate    "5.0" in "${cassandra_version}"
+    ${contains} =    Evaluate    str(${cassandra_version}).startswith("5.")
     ${permissions}=  Run Keyword If    ${contains}
     ...    Create List    CREATE    ALTER    DROP    SELECT    MODIFY    AUTHORIZE    UNMASK    SELECT_MASKED
     ...    ELSE
