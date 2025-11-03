@@ -107,7 +107,7 @@ Check Users Permissions
 Get Expected Permissions
     [Arguments]  ${cassandra_version}
     Log  Determining expected permissions for Cassandra version: "${cassandra_version}"
-    ${contains} =    Evaluate    str(${cassandra_version}).startswith("5.")
+    ${contains} =    Evaluate    "5.0" in "${cassandra_version}"
     ${permissions}=  Run Keyword If    ${contains}
     ...    Create List    CREATE    ALTER    DROP    SELECT    MODIFY    AUTHORIZE    UNMASK    SELECT_MASKED
     ...    ELSE
@@ -126,9 +126,10 @@ Delete Dbaas Users
     Delete User  ${user_name}
 
 Get Cassandra Version
-    ${pod}=  Get Pod  cassandra0-0  ${CASSANDRA_NAMESPACE}
-    ${cassandra_version}=    Set Variable    ${pod.metadata.labels['app.kubernetes.io/version']}
-    [Return]    ${cassandra_version}
+    ${pod}=    Get Pod    cassandra0-0    ${CASSANDRA_NAMESPACE}
+    ${output}=    Run    kubectl exec -n ${CASSANDRA_NAMESPACE} ${pod.metadata.name} -- nodetool version
+    ${version}=    Evaluate    str("${output}").split(":")[1].strip()
+    [Return]    ${version}
 
 *** Test Cases ***
 Test Wrong Credentials
