@@ -98,5 +98,5 @@ Check Pod Status Is Running
     Should Be Equal As Strings  ${pod.status.phase}  Running
 
 Fetch Cassandra Version
-    ${version}=    Get Cassandra Version
-    [Return]    ${version}
+    ${version}=  Get Cassandra Version
+    [Return]  ${version}
