@@ -99,4 +99,4 @@ Check Pod Status Is Running
 
 Fetch Cassandra Version
     ${version}=    Get Cassandra Version
-    [Return] ${version}
+    [Return]    ${version}
