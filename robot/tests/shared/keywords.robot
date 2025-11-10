@@ -96,3 +96,7 @@ Check Pod Status Is Running
     [Arguments]  ${pod_name}
     ${pod}=  Get Pod  ${pod_name}  ${CASSANDRA_NAMESPACE}
     Should Be Equal As Strings  ${pod.status.phase}  Running
+
+Fetch Cassandra Version
+    ${version}=    Get Cassandra Version
+    [Return] ${version}

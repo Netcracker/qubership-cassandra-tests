@@ -107,7 +107,7 @@ Check Users Permissions
 Get Expected Permissions
     [Arguments]  ${cassandra_version}
     Log  Determining expected permissions for Cassandra version: "${cassandra_version}"
-    ${contains} =    Evaluate    "5.0" in "${cassandra_version}"
+    ${contains} =    Evaluate    "${cassandra_version}".startswith("5.")
     ${permissions}=  Run Keyword If    ${contains}
     ...    Create List    CREATE    ALTER    DROP    SELECT    MODIFY    AUTHORIZE    UNMASK    SELECT_MASKED
     ...    ELSE
@@ -124,12 +124,6 @@ Delete Dbaas Users
     Delete User  ${user_name}
     ${user_name}=  Get From Dictionary  ${db_users}  streaming
     Delete User  ${user_name}
-
-Get Cassandra Version
-    ${pod}=    Get Pod    cassandra0-0    ${CASSANDRA_NAMESPACE}
-    ${output}=    Run    kubectl exec -n ${CASSANDRA_NAMESPACE} ${pod.metadata.name} -- nodetool version
-    ${version}=    Evaluate    str("${output}").split(":")[1].strip()
-    [Return]    ${version}
 
 *** Test Cases ***
 Test Wrong Credentials
@@ -299,7 +293,7 @@ Test Multiple Users Creating
     [Tags]  dbaas  dbaas_multiple_users  cassandra
     Skip If  "${dbaas_api_version}" == "v1"  API version v1, not possible to check case!
     Skip If  "${multiple_users_enabled}" == "false"  MULTI_USERS_ENABLED = False, not possible to check case!
-    ${cassandra_version}=      Get Cassandra Version
+    ${cassandra_version}=      Fetch Cassandra Version
     ${db_users}=  Create Keyspace And Return Users Names
     Check Users Permissions  ${cassandra_version}  ${db_users}
     [Teardown]  Run Keywords  DELETE KEYSPACE  ${DB_NAME}
@@ -309,7 +303,7 @@ Test Users Backup And Restore
     [Tags]  dbaas  dbaas_multiple_users  cassandra  dbaas_backup
     Skip If  "${dbaas_api_version}" == "v1"  API version v1, not possible to check case!
     Skip If  "${multiple_users_enabled}" == "false"  MULTI_USERS_ENABLED = False, not possible to check case!
-    ${cassandra_version}=      Get Cassandra Version
+    ${cassandra_version}=      Fetch Cassandra Version
     ${db_users}=  Create Keyspace And Return Users Names
     Create Data  ${DB_NAME}
     ${all_users}=  Get All Users

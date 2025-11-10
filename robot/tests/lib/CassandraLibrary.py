@@ -20,6 +20,7 @@ def main():
     lib.select_from_table()
     lib.delete_from_table(111)
     lib.delete_keyspace()
+    lib.get_cassandra_version()
 
 
 class CassandraLibrary(object):
@@ -146,6 +147,12 @@ class CassandraLibrary(object):
 
     def revoke_permission_from_user(self, permission, resource, user):
         self.session.execute("REVOKE %s on %s FROM %s" % (permission, resource, user))
+
+    def get_cassandra_version(self):
+        query = "SELECT release_version FROM system.local"
+        result = self.session.execute(query)
+        version = result.one().release_version
+        return version
 
 
 if __name__ == "__main__":
