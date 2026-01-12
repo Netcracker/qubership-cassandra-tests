@@ -283,7 +283,7 @@ Test Recovery With RegenerateNames
     Delete From ${REGENERATENAMES_BACKUP_KEYSPACE} And Check
     ${resultjson}=  Restore Data With Regenerate Names  ${document}  ${granularBackupId}  ${ATTEMPTS_NUMBER}
     ${dict}=  Set Variable  ${resultjson['changedNameDb']}
-    ${new_name}=  Set Variable  ${dict['${REGENERATENAMES_BACKUP_KEYSPACE}']}
+	${new_name}=  Get From Dictionary  ${dict}  ${REGENERATENAMES_BACKUP_KEYSPACE}
     Should Be True  """${REGENERATENAMES_BACKUP_KEYSPACE}_clone""" in """${new_name}"""
     Check Data In Table  ${new_name}
     [Teardown]  Run Keywords  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
