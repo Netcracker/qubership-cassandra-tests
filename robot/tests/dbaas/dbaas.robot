@@ -275,19 +275,66 @@ Test Check All Restored Data Directly
 
 Test Recovery With RegenerateNames
     [Tags]  dbaas_backup  cassandra
-    ${REGENERATENAMES_BACKUP_KEYSPACE}=  Set Variable  regenerate_names_${CASSANDRA_KEYSPACE}
+
+    ${REGENERATENAMES_BACKUP_KEYSPACE}=  Set Variable
+    ...  regenerate_names_${CASSANDRA_KEYSPACE}
+
+    Log  Original keyspace: ${REGENERATENAMES_BACKUP_KEYSPACE}
+
     Create Data  ${REGENERATENAMES_BACKUP_KEYSPACE}
-    ${document}=  Set Variable  ["${REGENERATENAMES_BACKUP_KEYSPACE}"]
-    ${granularBackupId}=  Backup Data And Check  ${document}  ${ATTEMPTS_NUMBER}
+
+    ${document}=  Set Variable
+    ...  ["${REGENERATENAMES_BACKUP_KEYSPACE}"]
+
+    Log  Document list used for backup: ${document}
+
+    ${granularBackupId}=  Backup Data And Check
+    ...  ${document}
+    ...  ${ATTEMPTS_NUMBER}
+
+    Log  Granular backup id: ${granularBackupId}
+
     Check Data In Table  ${REGENERATENAMES_BACKUP_KEYSPACE}
+
     Delete From ${REGENERATENAMES_BACKUP_KEYSPACE} And Check
-    ${resultjson}=  Restore Data With Regenerate Names  ${document}  ${granularBackupId}  ${ATTEMPTS_NUMBER}
-    ${dict}=  Set Variable  ${resultjson['changedNameDb']}
-	${new_name}=  Get From Dictionary  ${dict}  ${REGENERATENAMES_BACKUP_KEYSPACE}
-    Should Be True  """${REGENERATENAMES_BACKUP_KEYSPACE}_clone""" in """${new_name}"""
+
+    ${resultjson}=  Restore Data With Regenerate Names
+    ...  ${document}
+    ...  ${granularBackupId}
+    ...  ${ATTEMPTS_NUMBER}
+
+    Log  Restore result JSON: ${resultjson}
+
+    Dictionary Should Contain Key
+    ...  ${resultjson}
+    ...  changedNameDb
+
+    ${changed_db}=  Get From Dictionary
+    ...  ${resultjson}
+    ...  changedNameDb
+
+    Log  changedNameDb content: ${changed_db}
+
+    Dictionary Should Contain Key
+    ...  ${changed_db}
+    ...  ${REGENERATENAMES_BACKUP_KEYSPACE}
+
+    ${new_name}=  Get From Dictionary
+    ...  ${changed_db}
+    ...  ${REGENERATENAMES_BACKUP_KEYSPACE}
+
+    Log  New regenerated keyspace name: ${new_name}
+
+    Should Contain
+    ...  ${new_name}
+    ...  ${REGENERATENAMES_BACKUP_KEYSPACE}_clone
+
     Check Data In Table  ${new_name}
-    [Teardown]  Run Keywords  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
-     ...  AND  DELETE KEYSPACE  ${new_name}
+
+    [Teardown]  Run Keywords
+    ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
+    ...  AND
+    ...  DELETE KEYSPACE  ${new_name}
 
 Test Multiple Users Creating
     [Tags]  dbaas  dbaas_multiple_users  cassandra
