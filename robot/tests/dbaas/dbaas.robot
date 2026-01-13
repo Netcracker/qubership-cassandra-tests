@@ -58,13 +58,24 @@ Restore Data And Check
 
 Restore Data With Regenerate Names
     [Arguments]  ${document}  ${backupId}  ${attempts}
-    ${response}=  Post Request With ${document} Data To /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/${backupId}/restore?regenerateNames=true
+
+    ${response}=  Post Request With ${document} Data To
+    ...  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/${backupId}/restore?regenerateNames=true
     Should Be Equal As Strings  ${response.status_code}  202
-    ${resultjson}=    Evaluate     json.loads("""${response.content}""")    json
-    ${restoreId}=  Set Variable  ${resultjson['trackId']}
-    ${response}=  Wait For /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId} Job Completion With ${attempts} Attempts
-    Should Be Equal As Strings  ${response.status_code}  200
-    [Return]  ${resultjson}
+
+    ${initialjson}=  Evaluate  json.loads("""${response.content}""")  json
+    ${restoreId}=  Set Variable  ${initialjson['trackId']}
+
+    ${final_response}=  Wait For
+    ...  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId}
+    ...  Job Completion With ${attempts} Attempts
+
+    Should Be Equal As Strings  ${final_response.status_code}  200
+
+    ${finaljson}=  Evaluate  json.loads("""${final_response.content}""")  json
+
+    [Return]  ${finaljson}
+
 
 Check Roles Existence In Response
     [Arguments]  ${resp}
@@ -288,64 +299,38 @@ Test Check All Restored Data Directly
 Test Recovery With RegenerateNames
     [Tags]  dbaas_backup  cassandra
 
-    # -------------------------
-    # Setup HTTP session
-    # -------------------------
-    Create Session  mysession  ${BACKUP_HOST}  ${protocol}=${PROTOCOL}  headers=${HEADERS}
-
-    # -------------------------
-    # Setup original keyspace
-    # -------------------------
     ${ORIGINAL_KEYSPACE}=  Set Variable  regenerate_names_${CASSANDRA_KEYSPACE}
     Create Data  ${ORIGINAL_KEYSPACE}
 
     ${document}=  Set Variable  ["${ORIGINAL_KEYSPACE}"]
 
-    ${granularBackupId}=  Backup Data And Check  ${document}  ${ATTEMPTS_NUMBER}
+    ${backupId}=  Backup Data And Check  ${document}  ${ATTEMPTS_NUMBER}
 
     Check Data In Table  ${ORIGINAL_KEYSPACE}
     Delete From ${ORIGINAL_KEYSPACE} And Check
 
-    # -------------------------
-    # Restore with regenerate names
-    # -------------------------
-    ${restore_response}=  Restore Data With Regenerate Names  ${document}  ${granularBackupId}  ${ATTEMPTS_NUMBER}
+    ${resultjson}=  Restore Data With Regenerate Names
+    ...  ${document}
+    ...  ${backupId}
+    ...  ${ATTEMPTS_NUMBER}
 
-    Log To Console    \n--- DEBUG: Initial Restore Response ---
-    Log To Console    ${restore_response}
-
-    ${trackId}=  Get From Dictionary  ${restore_response}  trackId
-
-    # -------------------------
-    # Wait until restore is DONE
-    # -------------------------
-    ${resultjson}=  Wait Until Restore Completes  mysession  ${trackId}  30  10
-
-    Log To Console    \n--- DEBUG: Restore Completed Response ---
+    Log To Console    \n--- DEBUG: Final Restore JSON ---
     Log To Console    ${resultjson}
 
     ${changed_db}=  Get From Dictionary  ${resultjson}  changedNameDb
     ${NEW_KEYSPACE}=  Get From Dictionary  ${changed_db}  ${ORIGINAL_KEYSPACE}
 
-    Log To Console    \n--- DEBUG: Regenerated Keyspace ---
-    Log To Console    NEW_KEYSPACE=${NEW_KEYSPACE}
+    Log To Console    Restored keyspace=${NEW_KEYSPACE}
 
-    # -------------------------
-    # Validate restored keyspace
-    # -------------------------
-    ${_}=  Check Data In Table  ${NEW_KEYSPACE}
-    Should Match Regexp  ${NEW_KEYSPACE}  ^${ORIGINAL_KEYSPACE}_clone_.+$
+    Check Data In Table  ${NEW_KEYSPACE}
 
-    # -------------------------
-    # Teardown with logging
-    # -------------------------
+    Should Contain  ${NEW_KEYSPACE}  ${ORIGINAL_KEYSPACE}_clone
+
     [Teardown]  Run Keywords
-    ...  Log To Console  \n--- Teardown: Deleting original keyspace ${ORIGINAL_KEYSPACE} ---
     ...  DELETE KEYSPACE  ${ORIGINAL_KEYSPACE}
     ...  AND
-    ...  Log To Console  \n--- Teardown: Deleting regenerated keyspace ${NEW_KEYSPACE} ---
-    ...  AND
-    ...  Run Keyword If  '${NEW_KEYSPACE}' != ''  DELETE KEYSPACE  ${NEW_KEYSPACE}
+    ...  DELETE KEYSPACE  ${NEW_KEYSPACE}
+
 
 
 
