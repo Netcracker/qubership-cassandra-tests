@@ -298,35 +298,45 @@ Test Recovery With RegenerateNames
     ...  ${ATTEMPTS_NUMBER}
 
     # -------------------------
-    # DEBUG LOGGING BLOCK
+    # DEBUG: restore response
     # -------------------------
     Log To Console    \n--- DEBUG: Restore Response ---
-    Log To Console    resultjson: ${resultjson}
+    Log To Console    resultjson=${resultjson}
 
     ${changed_db}=  Get From Dictionary
     ...  ${resultjson}
     ...  changedNameDb
 
     Log To Console    \n--- DEBUG: changedNameDb ---
-    Log To Console    changedNameDb: ${changed_db}
+    Log To Console    changedNameDb=${changed_db}
 
     ${new_name}=  Get From Dictionary
     ...  ${changed_db}
     ...  ${REGENERATENAMES_BACKUP_KEYSPACE}
 
-    Log To Console    \n--- DEBUG: New Keyspace ---
-    Log To Console    new_name: ${new_name}
+    Log To Console    \n--- DEBUG: New keyspace BEFORE check ---
+    Log To Console    new_name=${new_name}
+
+    # -------------------------
+    # IMPORTANT FIX:
+    # prevent variable overwrite
+    # -------------------------
+    Run Keyword And Ignore Return Value
+    ...  Check Data In Table
+    ...  ${new_name}
+
+    Log To Console    \n--- DEBUG: New keyspace AFTER check ---
+    Log To Console    new_name=${new_name}
 
     Should Contain
     ...  ${new_name}
     ...  ${REGENERATENAMES_BACKUP_KEYSPACE}_clone
 
-    Check Data In Table  ${new_name}
-
     [Teardown]  Run Keywords
     ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
     ...  AND
     ...  DELETE KEYSPACE  ${new_name}
+
 
 
 Test Multiple Users Creating
