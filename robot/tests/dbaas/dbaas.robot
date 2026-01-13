@@ -276,27 +276,30 @@ Test Check All Restored Data Directly
 Test Recovery With RegenerateNames
     [Tags]  dbaas_backup  cassandra
 
-    ${REGENERATENAMES_BACKUP_KEYSPACE}=  Set Variable
+    ${ORIGINAL_KEYSPACE}=  Set Variable
     ...  regenerate_names_${CASSANDRA_KEYSPACE}
 
-    Create Data  ${REGENERATENAMES_BACKUP_KEYSPACE}
+    Create Data  ${ORIGINAL_KEYSPACE}
 
     ${document}=  Set Variable
-    ...  ["${REGENERATENAMES_BACKUP_KEYSPACE}"]
+    ...  ["${ORIGINAL_KEYSPACE}"]
 
     ${granularBackupId}=  Backup Data And Check
     ...  ${document}
     ...  ${ATTEMPTS_NUMBER}
 
-    Check Data In Table  ${REGENERATENAMES_BACKUP_KEYSPACE}
+    Check Data In Table  ${ORIGINAL_KEYSPACE}
 
-    Delete From ${REGENERATENAMES_BACKUP_KEYSPACE} And Check
+    Delete From ${ORIGINAL_KEYSPACE} And Check
 
     ${resultjson}=  Restore Data With Regenerate Names
     ...  ${document}
     ...  ${granularBackupId}
     ...  ${ATTEMPTS_NUMBER}
 
+    # -------------------------
+    # DEBUG: restore response
+    # -------------------------
     Log To Console    \n--- DEBUG: Restore Response ---
     Log To Console    resultjson=${resultjson}
 
@@ -307,26 +310,25 @@ Test Recovery With RegenerateNames
     Log To Console    \n--- DEBUG: changedNameDb ---
     Log To Console    changedNameDb=${changed_db}
 
-    ${new_name}=  Get From Dictionary
+    ${NEW_KEYSPACE}=  Get From Dictionary
     ...  ${changed_db}
-    ...  ${REGENERATENAMES_BACKUP_KEYSPACE}
+    ...  ${ORIGINAL_KEYSPACE}
 
-    Log To Console    \n--- DEBUG: New keyspace BEFORE check ---
-    Log To Console    new_name=${new_name}
+    Log To Console    \n--- DEBUG: Regenerated Keyspace ---
+    Log To Console    NEW_KEYSPACE=${NEW_KEYSPACE}
 
-    ${_}=  Check Data In Table  ${new_name}
+    # Do NOT overwrite variable
+    ${_}=  Check Data In Table  ${NEW_KEYSPACE}
 
-    Log To Console    \n--- DEBUG: New keyspace AFTER check ---
-    Log To Console    new_name=${new_name}
-
-    Should Contain
-    ...  ${new_name}
-    ...  ${REGENERATENAMES_BACKUP_KEYSPACE}_clone
+    Should Match Regexp
+    ...  ${NEW_KEYSPACE}
+    ...  ^${ORIGINAL_KEYSPACE}_clone_.+$
 
     [Teardown]  Run Keywords
-    ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
+    ...  DELETE KEYSPACE  ${ORIGINAL_KEYSPACE}
     ...  AND
-    ...  DELETE KEYSPACE  ${new_name}
+    ...  DELETE KEYSPACE  ${NEW_KEYSPACE}
+
 
 
 
