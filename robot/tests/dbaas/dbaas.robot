@@ -28,12 +28,13 @@ Cleanup
 
 Wait Until Restore Completes
     [Arguments]  ${restoreId}  ${max_attempts}=20  ${sleep}=10
-    :FOR  ${i}  IN RANGE  ${max_attempts}
-    \    ${response}=  Get Request  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId}
-    \    ${resultjson}=  Evaluate  json.loads("""${response.content}""")  json
-    \    Log To Console  Attempt ${i}: Restore status=${resultjson['status']}
-    \    Run Keyword If  '${resultjson["status"]}' == 'DONE'  Return From Keyword  ${resultjson}
-    \    Sleep  ${sleep}
+    FOR  ${i}  IN RANGE  ${max_attempts}
+        ${response}=  Get Request  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId}
+        ${resultjson}=  Evaluate  json.loads("""${response.content}""")  json
+        Log To Console  Attempt ${i}: Restore status=${resultjson['status']}
+        Run Keyword If  '${resultjson["status"]}' == 'DONE'  Return From Keyword  ${resultjson}
+        Sleep  ${sleep}
+    END
     Fail  Restore did not complete after ${max_attempts} attempts
 
 Backup Data And Check
@@ -283,6 +284,7 @@ Test Check All Restored Data Directly
     Check Data In Table  ${CASSANDRA_KEYSPACE}
     Check Data In Table  ${GRANULAR_TEST_KEYSPACE}  ${granular_backup_col1}  ${granular_backup_col2}
 
+*** Test Cases ***
 Test Recovery With RegenerateNames
     [Tags]  dbaas_backup  cassandra
 
@@ -327,16 +329,19 @@ Test Recovery With RegenerateNames
     # Validate restored keyspace
     # -------------------------
     ${_}=  Check Data In Table  ${NEW_KEYSPACE}
-
     Should Match Regexp  ${NEW_KEYSPACE}  ^${ORIGINAL_KEYSPACE}_clone_.+$
 
     # -------------------------
-    # Teardown
+    # Teardown with logging
     # -------------------------
     [Teardown]  Run Keywords
+    ...  Log To Console  \n--- Teardown: Deleting original keyspace ${ORIGINAL_KEYSPACE} ---
     ...  DELETE KEYSPACE  ${ORIGINAL_KEYSPACE}
     ...  AND
-    ...  DELETE KEYSPACE  ${NEW_KEYSPACE}
+    ...  Log To Console  \n--- Teardown: Deleting regenerated keyspace ${NEW_KEYSPACE} ---
+    ...  AND
+    ...  Run Keyword If  '${NEW_KEYSPACE}' != ''  DELETE KEYSPACE  ${NEW_KEYSPACE}
+
 
 
 Test Multiple Users Creating
