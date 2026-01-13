@@ -26,6 +26,16 @@ Cleanup
     DELETE KEYSPACE  ${CASSANDRA_KEYSPACE}
     DELETE KEYSPACE  ${GRANULAR_TEST_KEYSPACE}
 
+Wait Until Restore Completes
+    [Arguments]  ${restoreId}  ${max_attempts}=20  ${sleep}=10
+    :FOR  ${i}  IN RANGE  ${max_attempts}
+    \    ${response}=  Get Request  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId}
+    \    ${resultjson}=  Evaluate  json.loads("""${response.content}""")  json
+    \    Log To Console  Attempt ${i}: Restore status=${resultjson['status']}
+    \    Run Keyword If  '${resultjson["status"]}' == 'DONE'  Return From Keyword  ${resultjson}
+    \    Sleep  ${sleep}
+    Fail  Restore did not complete after ${max_attempts} attempts
+
 Backup Data And Check
     [Arguments]  ${document}  ${attempts}
     ${response}=  Post Request With ${document} Data To /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/collect
@@ -276,60 +286,57 @@ Test Check All Restored Data Directly
 Test Recovery With RegenerateNames
     [Tags]  dbaas_backup  cassandra
 
-    ${ORIGINAL_KEYSPACE}=  Set Variable
-    ...  regenerate_names_${CASSANDRA_KEYSPACE}
-
+    # -------------------------
+    # Setup original keyspace
+    # -------------------------
+    ${ORIGINAL_KEYSPACE}=  Set Variable  regenerate_names_${CASSANDRA_KEYSPACE}
     Create Data  ${ORIGINAL_KEYSPACE}
 
-    ${document}=  Set Variable
-    ...  ["${ORIGINAL_KEYSPACE}"]
+    ${document}=  Set Variable  ["${ORIGINAL_KEYSPACE}"]
 
-    ${granularBackupId}=  Backup Data And Check
-    ...  ${document}
-    ...  ${ATTEMPTS_NUMBER}
+    ${granularBackupId}=  Backup Data And Check  ${document}  ${ATTEMPTS_NUMBER}
 
     Check Data In Table  ${ORIGINAL_KEYSPACE}
-
     Delete From ${ORIGINAL_KEYSPACE} And Check
 
-    ${resultjson}=  Restore Data With Regenerate Names
-    ...  ${document}
-    ...  ${granularBackupId}
-    ...  ${ATTEMPTS_NUMBER}
+    # -------------------------
+    # Restore with regenerate names
+    # -------------------------
+    ${restore_response}=  Restore Data With Regenerate Names  ${document}  ${granularBackupId}  ${ATTEMPTS_NUMBER}
+
+    Log To Console    \n--- DEBUG: Initial Restore Response ---
+    Log To Console    ${restore_response}
+
+    ${trackId}=  Get From Dictionary  ${restore_response}  trackId
 
     # -------------------------
-    # DEBUG: restore response
+    # Wait until restore is DONE
     # -------------------------
-    Log To Console    \n--- DEBUG: Restore Response ---
-    Log To Console    resultjson=${resultjson}
+    ${resultjson}=  Wait Until Restore Completes  ${trackId}  30  10
 
-    ${changed_db}=  Get From Dictionary
-    ...  ${resultjson}
-    ...  changedNameDb
+    Log To Console    \n--- DEBUG: Restore Completed Response ---
+    Log To Console    ${resultjson}
 
-    Log To Console    \n--- DEBUG: changedNameDb ---
-    Log To Console    changedNameDb=${changed_db}
-
-    ${NEW_KEYSPACE}=  Get From Dictionary
-    ...  ${changed_db}
-    ...  ${ORIGINAL_KEYSPACE}
+    ${changed_db}=  Get From Dictionary  ${resultjson}  changedNameDb
+    ${NEW_KEYSPACE}=  Get From Dictionary  ${changed_db}  ${ORIGINAL_KEYSPACE}
 
     Log To Console    \n--- DEBUG: Regenerated Keyspace ---
     Log To Console    NEW_KEYSPACE=${NEW_KEYSPACE}
 
-    # Do NOT overwrite variable
+    # -------------------------
+    # Validate restored keyspace
+    # -------------------------
     ${_}=  Check Data In Table  ${NEW_KEYSPACE}
 
-    Should Match Regexp
-    ...  ${NEW_KEYSPACE}
-    ...  ^${ORIGINAL_KEYSPACE}_clone_.+$
+    Should Match Regexp  ${NEW_KEYSPACE}  ^${ORIGINAL_KEYSPACE}_clone_.+$
 
+    # -------------------------
+    # Teardown
+    # -------------------------
     [Teardown]  Run Keywords
     ...  DELETE KEYSPACE  ${ORIGINAL_KEYSPACE}
     ...  AND
     ...  DELETE KEYSPACE  ${NEW_KEYSPACE}
-
-
 
 
 Test Multiple Users Creating
