@@ -59,22 +59,18 @@ Restore Data And Check
 Restore Data With Regenerate Names
     [Arguments]  ${document}  ${backupId}  ${attempts}
 
-    ${response}=  Post Request With ${document} Data To
-    ...  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/${backupId}/restore?regenerateNames=true
+    ${response}=  Post Request With ${document} Data To /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/${backupId}/restore?regenerateNames=true
     Should Be Equal As Strings  ${response.status_code}  202
 
     ${initialjson}=  Evaluate  json.loads("""${response.content}""")  json
     ${restoreId}=  Set Variable  ${initialjson['trackId']}
 
-    ${final_response}=  Wait For
-    ...  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId}
-    ...  Job Completion With ${attempts} Attempts
-
+    ${final_response}=  Wait For /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId} Job Completion With ${attempts} Attempts
     Should Be Equal As Strings  ${final_response.status_code}  200
 
     ${finaljson}=  Evaluate  json.loads("""${final_response.content}""")  json
-
     [Return]  ${finaljson}
+
 
 
 Check Roles Existence In Response
