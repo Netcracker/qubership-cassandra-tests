@@ -297,9 +297,6 @@ Test Recovery With RegenerateNames
     ...  ${granularBackupId}
     ...  ${ATTEMPTS_NUMBER}
 
-    # -------------------------
-    # DEBUG: restore response
-    # -------------------------
     Log To Console    \n--- DEBUG: Restore Response ---
     Log To Console    resultjson=${resultjson}
 
@@ -317,13 +314,7 @@ Test Recovery With RegenerateNames
     Log To Console    \n--- DEBUG: New keyspace BEFORE check ---
     Log To Console    new_name=${new_name}
 
-    # -------------------------
-    # IMPORTANT FIX:
-    # prevent variable overwrite
-    # -------------------------
-    Run Keyword And Ignore Return Value
-    ...  Check Data In Table
-    ...  ${new_name}
+    ${_}=  Check Data In Table  ${new_name}
 
     Log To Console    \n--- DEBUG: New keyspace AFTER check ---
     Log To Console    new_name=${new_name}
