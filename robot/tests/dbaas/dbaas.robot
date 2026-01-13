@@ -310,6 +310,7 @@ Test Recovery With RegenerateNames
     ${REGENERATENAMES_BACKUP_KEYSPACE}=  Set Variable  regenerate_names_${CASSANDRA_KEYSPACE}
     Log To Console  Original keyspace: ${REGENERATENAMES_BACKUP_KEYSPACE}
 
+    # Create data in the original keyspace
     Create Data  ${REGENERATENAMES_BACKUP_KEYSPACE}
 
     ${document}=  Set Variable  ["${REGENERATENAMES_BACKUP_KEYSPACE}"]
@@ -317,6 +318,7 @@ Test Recovery With RegenerateNames
 
     Delete From ${REGENERATENAMES_BACKUP_KEYSPACE} And Check
 
+    # Restore with regenerated names
     ${resultjson}=  Restore Data With Regenerate Names  ${document}  ${granularBackupId}  ${ATTEMPTS_NUMBER}
 
     ${changed_db}=  Get From Dictionary  ${resultjson}  changedNameDb
@@ -324,18 +326,25 @@ Test Recovery With RegenerateNames
 
     Log To Console  Regenerated keyspace: ${NEW_KEYSPACE}
 
+    # Check that the name was correctly regenerated
     Should Contain  ${NEW_KEYSPACE}  ${REGENERATENAMES_BACKUP_KEYSPACE}_clone
 
-    # 🔑 IMPORTANT FIX: wait for Cassandra consistency
-    Wait Until Keyword Succeeds
-    ...  2 minutes
-    ...  10 seconds
-    ...  Check Data In Table  ${NEW_KEYSPACE}
+    # ---- NEW: Verify data exists in the restored keyspace ----
+    ${tables}=  Get Tables In Keyspace  ${NEW_KEYSPACE}
+    Log To Console  Tables found in ${NEW_KEYSPACE}: ${tables}
+
+    :FOR  ${table}  IN  @{tables}
+    \   ${row_count}=  Get Row Count In Table  ${NEW_KEYSPACE}  ${table}
+    \   Log To Console  Table ${table} has ${row_count} rows
+    \   Should Be True  ${row_count} > 0  msg=Table ${table} in ${NEW_KEYSPACE} has no data after restore
+
+    Check Data In Table  ${NEW_KEYSPACE}
 
     [Teardown]  Run Keywords
     ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
     ...  AND
     ...  DELETE KEYSPACE  ${NEW_KEYSPACE}
+
 
 
 Test Multiple Users Creating
