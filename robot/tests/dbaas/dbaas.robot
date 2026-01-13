@@ -27,9 +27,9 @@ Cleanup
     DELETE KEYSPACE  ${GRANULAR_TEST_KEYSPACE}
 
 Wait Until Restore Completes
-    [Arguments]  ${restoreId}  ${max_attempts}=20  ${sleep}=10
+    [Arguments]  ${session}  ${restoreId}  ${max_attempts}=20  ${sleep}=10
     FOR  ${i}  IN RANGE  ${max_attempts}
-        ${response}=  Get Request  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId}
+        ${response}=  GET On Session  ${session}  /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId}
         ${resultjson}=  Evaluate  json.loads("""${response.content}""")  json
         Log To Console  Attempt ${i}: Restore status=${resultjson['status']}
         Run Keyword If  '${resultjson["status"]}' == 'DONE'  Return From Keyword  ${resultjson}
@@ -289,6 +289,11 @@ Test Recovery With RegenerateNames
     [Tags]  dbaas_backup  cassandra
 
     # -------------------------
+    # Setup HTTP session
+    # -------------------------
+    Create Session  mysession  ${BACKUP_HOST}  ${protocol}=${PROTOCOL}  headers=${HEADERS}
+
+    # -------------------------
     # Setup original keyspace
     # -------------------------
     ${ORIGINAL_KEYSPACE}=  Set Variable  regenerate_names_${CASSANDRA_KEYSPACE}
@@ -314,7 +319,7 @@ Test Recovery With RegenerateNames
     # -------------------------
     # Wait until restore is DONE
     # -------------------------
-    ${resultjson}=  Wait Until Restore Completes  ${trackId}  30  10
+    ${resultjson}=  Wait Until Restore Completes  mysession  ${trackId}  30  10
 
     Log To Console    \n--- DEBUG: Restore Completed Response ---
     Log To Console    ${resultjson}
