@@ -279,20 +279,14 @@ Test Recovery With RegenerateNames
     ${REGENERATENAMES_BACKUP_KEYSPACE}=  Set Variable
     ...  regenerate_names_${CASSANDRA_KEYSPACE}
 
-    Log  Original keyspace: ${REGENERATENAMES_BACKUP_KEYSPACE}
-
     Create Data  ${REGENERATENAMES_BACKUP_KEYSPACE}
 
     ${document}=  Set Variable
     ...  ["${REGENERATENAMES_BACKUP_KEYSPACE}"]
 
-    Log  Document list used for backup: ${document}
-
     ${granularBackupId}=  Backup Data And Check
     ...  ${document}
     ...  ${ATTEMPTS_NUMBER}
-
-    Log  Granular backup id: ${granularBackupId}
 
     Check Data In Table  ${REGENERATENAMES_BACKUP_KEYSPACE}
 
@@ -303,27 +297,25 @@ Test Recovery With RegenerateNames
     ...  ${granularBackupId}
     ...  ${ATTEMPTS_NUMBER}
 
-    Log  Restore result JSON: ${resultjson}
-
-    Dictionary Should Contain Key
-    ...  ${resultjson}
-    ...  changedNameDb
+    # -------------------------
+    # DEBUG LOGGING BLOCK
+    # -------------------------
+    Log To Console    \n--- DEBUG: Restore Response ---
+    Log To Console    resultjson: ${resultjson}
 
     ${changed_db}=  Get From Dictionary
     ...  ${resultjson}
     ...  changedNameDb
 
-    Log  changedNameDb content: ${changed_db}
-
-    Dictionary Should Contain Key
-    ...  ${changed_db}
-    ...  ${REGENERATENAMES_BACKUP_KEYSPACE}
+    Log To Console    \n--- DEBUG: changedNameDb ---
+    Log To Console    changedNameDb: ${changed_db}
 
     ${new_name}=  Get From Dictionary
     ...  ${changed_db}
     ...  ${REGENERATENAMES_BACKUP_KEYSPACE}
 
-    Log  New regenerated keyspace name: ${new_name}
+    Log To Console    \n--- DEBUG: New Keyspace ---
+    Log To Console    new_name: ${new_name}
 
     Should Contain
     ...  ${new_name}
@@ -335,6 +327,7 @@ Test Recovery With RegenerateNames
     ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
     ...  AND
     ...  DELETE KEYSPACE  ${new_name}
+
 
 Test Multiple Users Creating
     [Tags]  dbaas  dbaas_multiple_users  cassandra
