@@ -59,17 +59,29 @@ Restore Data And Check
 Restore Data With Regenerate Names
     [Arguments]  ${document}  ${backupId}  ${attempts}
 
+    # Trigger restore
     ${response}=  Post Request With ${document} Data To /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/${backupId}/restore?regenerateNames=true
     Should Be Equal As Strings  ${response.status_code}  202
 
     ${initialjson}=  Evaluate  json.loads("""${response.content}""")  json
+    Log To Console  --- DEBUG: Initial Restore Response ---
+    Log To Console  ${initialjson}
+
     ${restoreId}=  Set Variable  ${initialjson['trackId']}
 
+    # Wait for completion
     ${final_response}=  Wait For /api/${dbaas_api_version}/dbaas/adapter/cassandra/backups/track/restore/${restoreId} Job Completion With ${attempts} Attempts
     Should Be Equal As Strings  ${final_response.status_code}  200
 
     ${finaljson}=  Evaluate  json.loads("""${final_response.content}""")  json
-    [Return]  ${finaljson}
+    Log To Console  --- DEBUG: Final Restore Status ---
+    Log To Console  ${finaljson}
+
+    # Attach final status but KEEP changedNameDb
+    Set To Dictionary  ${initialjson}  status=${finaljson['status']}
+
+    [Return]  ${initialjson}
+
 
 
 
@@ -295,39 +307,31 @@ Test Check All Restored Data Directly
 Test Recovery With RegenerateNames
     [Tags]  dbaas_backup  cassandra
 
-    ${ORIGINAL_KEYSPACE}=  Set Variable  regenerate_names_${CASSANDRA_KEYSPACE}
-    Create Data  ${ORIGINAL_KEYSPACE}
+    ${REGENERATENAMES_BACKUP_KEYSPACE}=  Set Variable  regenerate_names_${CASSANDRA_KEYSPACE}
+    Log To Console  Original keyspace: ${REGENERATENAMES_BACKUP_KEYSPACE}
 
-    ${document}=  Set Variable  ["${ORIGINAL_KEYSPACE}"]
+    Create Data  ${REGENERATENAMES_BACKUP_KEYSPACE}
 
-    ${backupId}=  Backup Data And Check  ${document}  ${ATTEMPTS_NUMBER}
+    ${document}=  Set Variable  ["${REGENERATENAMES_BACKUP_KEYSPACE}"]
+    ${granularBackupId}=  Backup Data And Check  ${document}  ${ATTEMPTS_NUMBER}
 
-    Check Data In Table  ${ORIGINAL_KEYSPACE}
-    Delete From ${ORIGINAL_KEYSPACE} And Check
+    Delete From ${REGENERATENAMES_BACKUP_KEYSPACE} And Check
 
-    ${resultjson}=  Restore Data With Regenerate Names
-    ...  ${document}
-    ...  ${backupId}
-    ...  ${ATTEMPTS_NUMBER}
-
-    Log To Console    \n--- DEBUG: Final Restore JSON ---
-    Log To Console    ${resultjson}
+    ${resultjson}=  Restore Data With Regenerate Names  ${document}  ${granularBackupId}  ${ATTEMPTS_NUMBER}
 
     ${changed_db}=  Get From Dictionary  ${resultjson}  changedNameDb
-    ${NEW_KEYSPACE}=  Get From Dictionary  ${changed_db}  ${ORIGINAL_KEYSPACE}
+    ${NEW_KEYSPACE}=  Get From Dictionary  ${changed_db}  ${REGENERATENAMES_BACKUP_KEYSPACE}
 
-    Log To Console    Restored keyspace=${NEW_KEYSPACE}
+    Log To Console  Regenerated keyspace: ${NEW_KEYSPACE}
+
+    Should Contain  ${NEW_KEYSPACE}  ${REGENERATENAMES_BACKUP_KEYSPACE}_clone
 
     Check Data In Table  ${NEW_KEYSPACE}
 
-    Should Contain  ${NEW_KEYSPACE}  ${ORIGINAL_KEYSPACE}_clone
-
     [Teardown]  Run Keywords
-    ...  DELETE KEYSPACE  ${ORIGINAL_KEYSPACE}
+    ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
     ...  AND
     ...  DELETE KEYSPACE  ${NEW_KEYSPACE}
-
-
 
 
 Test Multiple Users Creating
