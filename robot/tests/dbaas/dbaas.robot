@@ -326,7 +326,11 @@ Test Recovery With RegenerateNames
 
     Should Contain  ${NEW_KEYSPACE}  ${REGENERATENAMES_BACKUP_KEYSPACE}_clone
 
-    Check Data In Table  ${NEW_KEYSPACE}
+    # 🔑 IMPORTANT FIX: wait for Cassandra consistency
+    Wait Until Keyword Succeeds
+    ...  2 minutes
+    ...  10 seconds
+    ...  Check Data In Table  ${NEW_KEYSPACE}
 
     [Teardown]  Run Keywords
     ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
