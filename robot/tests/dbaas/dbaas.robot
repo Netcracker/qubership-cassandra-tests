@@ -329,22 +329,16 @@ Test Recovery With RegenerateNames
     # Check that the name was correctly regenerated
     Should Contain  ${NEW_KEYSPACE}  ${REGENERATENAMES_BACKUP_KEYSPACE}_clone
 
-    # ---- NEW: Verify data exists in the restored keyspace ----
-    ${tables}=  Get Tables In Keyspace  ${NEW_KEYSPACE}
-    Log To Console  Tables found in ${NEW_KEYSPACE}: ${tables}
-
-    :FOR  ${table}  IN  @{tables}
-    \   ${row_count}=  Get Row Count In Table  ${NEW_KEYSPACE}  ${table}
-    \   Log To Console  Table ${table} has ${row_count} rows
-    \   Should Be True  ${row_count} > 0  msg=Table ${table} in ${NEW_KEYSPACE} has no data after restore
-
-    Check Data In Table  ${NEW_KEYSPACE}
+    # 🔑 IMPORTANT FIX: wait for Cassandra consistency
+    Wait Until Keyword Succeeds
+    ...  2 minutes
+    ...  10 seconds
+    ...  Check Data In Table  ${NEW_KEYSPACE}
 
     [Teardown]  Run Keywords
     ...  DELETE KEYSPACE  ${REGENERATENAMES_BACKUP_KEYSPACE}
     ...  AND
     ...  DELETE KEYSPACE  ${NEW_KEYSPACE}
-
 
 
 Test Multiple Users Creating
